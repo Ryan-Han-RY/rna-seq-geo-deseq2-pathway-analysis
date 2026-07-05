@@ -1,0 +1,4 @@
+group	disease_state	severity	sex	batch	n_samples
+control	healthy_control	not_available	not_available	not_available	17
+disease	COVID-19-related	Convalescent	M	Atlanta, GA, USA	1
+disease	COVID-19-related	not_available	not_available	not_available	16

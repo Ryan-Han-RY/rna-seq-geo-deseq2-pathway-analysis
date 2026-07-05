@@ -1,0 +1,8 @@
+item	value
+geo_accession	GSE152418
+raw_count_file	GSE152418_p20047_Study1_RawCounts.txt.gz
+n_genes	60683
+n_samples	34
+matched_sample_columns	34
+first_gene_id	ENSG00000223972
+first_sample_id	S145_nCOV001_C

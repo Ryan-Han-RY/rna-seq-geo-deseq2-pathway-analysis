@@ -1,0 +1,13 @@
+criterion	decision
+GEO accession	GSE152418
+Platform	RNA-seq / expression profiling by high throughput sequencing
+Species	Homo sapiens
+Sample type	PBMC
+Data type	Raw gene count matrix
+Comparison	COVID-19-related PBMC samples vs healthy control PBMC samples
+Sample size after metadata cleaning	34 samples
+Main DESeq2 design planned	~ group
+Primary grouping rule	Samples with nCoV/nCOV in the GEO sample title were assigned to disease; all remaining PBMC samples were assigned to control.
+Age variable	not_available
+Sex variable	available
+Batch variable	available

@@ -1,0 +1,11 @@
+metric	value
+n_genes	60683
+n_samples	34
+n_control_samples	17
+n_disease_samples	17
+counts_are_numeric	TRUE
+no_missing_values	TRUE
+metadata_count_order_identical	TRUE
+min_library_size	12967503
+median_library_size	15859048
+max_library_size	20458479
