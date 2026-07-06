@@ -1,43 +1,59 @@
 # Reproducible RNA-seq Differential Expression and Pathway Analysis of COVID-19-associated PBMC Transcriptomic Signatures
 
-This project implements a reproducible bulk RNA-seq differential expression and pathway analysis workflow using public GEO count data.
+## Project overview
 
-## Dataset
+This repository contains a reproducible bulk RNA-seq analysis workflow using public GEO count data from **GSE152418**. The project compares COVID-19-related peripheral blood mononuclear cell (PBMC) samples against healthy control PBMC samples to identify disease-associated gene-level and pathway-level transcriptomic signatures.
 
-- GEO accession: GSE152418
-- Organism: Homo sapiens
-- Sample type: PBMC
-- Data type: RNA-seq raw gene count matrix
-- Comparison: COVID-19-related PBMC samples versus healthy control PBMC samples
-- Samples retained after metadata curation: 17 control samples and 17 disease samples
+The workflow starts from a public raw count matrix and cleaned sample metadata, rather than FASTQ files. It focuses on metadata curation, count-matrix quality control, DESeq2 differential expression modelling, gene annotation, pathway enrichment, biological interpretation, and reproducible reporting.
 
 ## Research question
 
-Which genes and biological pathways are transcriptionally altered between COVID-19-related PBMC samples and healthy control PBMC samples in public GEO RNA-seq data?
+Which genes and biological pathways are transcriptionally altered between COVID-19-related PBMC samples and healthy control PBMC samples in public bulk RNA-seq data?
 
-## Main methods
+## Dataset
 
-- GEO metadata curation
-- Raw count matrix inspection
-- Count-metadata sample alignment
-- DESeq2 differential expression analysis
-- edgeR/limma-voom sensitivity analysis
-- PCA and sample distance analysis
-- Volcano plot and clustered heatmap
-- GO, KEGG, Reactome and GSEA-style enrichment analysis
-- Quarto-based reproducible report
+- **GEO accession:** GSE152418
+- **Organism:** Homo sapiens
+- **Sample type:** PBMC
+- **Data type:** Bulk RNA-seq raw gene count matrix
+- **Comparison:** COVID-19-related PBMC samples versus healthy control PBMC samples
+- **Samples retained after metadata curation:** 17 control samples and 17 disease samples
+- **Initial count matrix:** 60,683 genes × 34 samples
+- **Filtered count matrix:** 15,510 genes × 34 samples
 
-## Current project status
+The dataset was selected because it provides a manageable public RNA-seq count matrix with a clear disease-control design, making it suitable for a focused, reproducible differential expression and pathway interpretation workflow.
 
-Preprocessing completed:
+## Repository structure
 
-- Project structure created
-- GEO metadata downloaded
-- Raw count matrix downloaded
-- Metadata cleaned
-- Count matrix aligned to metadata
-- Dataset decision table created
-
-## Reproducibility
-
-The project uses `renv` to record the R package environment.
+```text
+.
+├── data/
+│   ├── raw/
+│   │   ├── counts_raw.tsv
+│   │   ├── counts_raw_matrix.rds
+│   │   └── gse152418_eset.rds
+│   └── processed/
+│       ├── metadata_clean.tsv
+│       ├── counts_clean.tsv
+│       ├── counts_clean_matrix.rds
+│       ├── counts_filtered.tsv
+│       ├── counts_filtered_matrix.rds
+│       └── vst_transformed_counts.tsv
+├── metadata/
+│   ├── metadata_raw_from_geo.tsv
+│   └── dataset_decision.tsv
+├── results/
+│   ├── figures/
+│   ├── objects/
+│   ├── tables/
+│   ├── analysis_notes.md
+│   └── pathway_interpretation_notes.md
+├── scripts/
+│   ├── 00_setup.R
+│   ├── 01_download_data.R
+│   ├── 02_metadata_cleaning.R
+│   ├── 03_qc_deseq2_analysis.R
+│   └── 04_gene_annotation_pathway_analysis.R
+├── report/
+├── renv.lock
+└── README.md
