@@ -1,0 +1,6 @@
+metric	value
+genes_in_deseq2_table	15510
+genes_with_symbol	13872
+genes_with_entrez_id	13872
+symbol_mapping_rate	0.8944
+entrez_mapping_rate	0.8944

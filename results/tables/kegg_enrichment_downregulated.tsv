@@ -1,0 +1,4 @@
+category	subcategory	ID	Description	GeneRatio	BgRatio	pvalue	p.adjust	qvalue	geneID	Count
+Environmental Information Processing	Signaling molecules and interaction	hsa04060	Cytokine-cytokine receptor interaction	8/35	161/5715	4.105657286247721e-6	4.310940150560107e-4	4.1056572862477217e-4	149233/51561/8807/10913/7852/3553/6351/6364	8
+Human Diseases	Immune disease	hsa05321	Inflammatory bowel disease	4/35	52/5715	2.591161567147087e-4	0.013603598227522206	0.012955807835735435	149233/51561/8807/3553	4
+Environmental Information Processing	Signaling molecules and interaction	hsa04061	Viral protein interaction with cytokine and cytokine receptor	4/35	65/5715	6.124454572625085e-4	0.0214355910041878	0.02041484857541695	8807/7852/6351/6364	4
