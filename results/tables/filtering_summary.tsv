@@ -1,0 +1,6 @@
+metric	value
+genes_before_filtering	60683
+genes_after_filtering	15510
+genes_removed	45173
+smallest_group_size	17
+filtering_rule	Retained genes with counts >= 10 in at least the smallest group size

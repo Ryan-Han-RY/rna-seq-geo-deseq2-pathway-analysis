@@ -1,0 +1,8 @@
+metric	value
+tested_genes	15510
+genes_with_adjusted_pvalue	15510
+significant_genes_fdr_0_05_abs_lfc_1	835
+upregulated_genes	736
+downregulated_genes	99
+contrast	disease vs control
+lfc_shrinkage	apeglm
