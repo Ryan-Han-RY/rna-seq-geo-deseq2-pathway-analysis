@@ -739,3 +739,37 @@ message(" - results/tables/gsea_go_bp_ranked_results.tsv")
 message(" - results/figures/volcano_plot_deseq2_gene_symbols.png")
 message(" - results/figures/top50_gene_heatmap_gene_symbols.png")
 message(" - results/pathway_interpretation_notes.md")
+
+# -----------------------------
+# 15. Cleaner GO BP bar plot for final report
+# -----------------------------
+go_up_clean <- readr::read_tsv(
+  here("results", "tables", "go_bp_enrichment_upregulated.tsv"),
+  show_col_types = FALSE
+) %>%
+  dplyr::slice_head(n = 15) %>%
+  dplyr::mutate(
+    neg_log10_padj = -log10(p.adjust),
+    Description_wrapped = stringr::str_wrap(Description, width = 42)
+  )
+
+p_go_bar <- ggplot(
+  go_up_clean,
+  aes(x = reorder(Description_wrapped, neg_log10_padj), y = neg_log10_padj)
+) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Top GO Biological Process terms among upregulated genes",
+    x = NULL,
+    y = "-log10 adjusted p-value"
+  ) +
+  theme_bw(base_size = 11)
+
+ggsave(
+  filename = here("results", "figures", "go_bp_top_terms_upregulated_barplot.png"),
+  plot = p_go_bar,
+  width = 8.5,
+  height = 6.5,
+  dpi = 300
+)

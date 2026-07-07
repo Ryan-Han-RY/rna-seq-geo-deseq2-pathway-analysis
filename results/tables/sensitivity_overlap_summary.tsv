@@ -1,0 +1,12 @@
+metric	value
+genes_compared	15510
+deseq2_significant_genes	835
+limma_voom_significant_genes	898
+shared_significant_genes	720
+deseq2_only_significant_genes	115
+limma_voom_only_significant_genes	178
+jaccard_index_significant_genes	0.7108
+same_logfc_direction_all_tested	0.9587
+same_logfc_direction_shared_significant	1
+pearson_logfc_correlation	0.9658
+spearman_logfc_correlation	0.9762

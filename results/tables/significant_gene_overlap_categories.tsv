@@ -1,0 +1,4 @@
+category	n_genes
+Shared significant	720
+DESeq2 only	115
+limma-voom only	178

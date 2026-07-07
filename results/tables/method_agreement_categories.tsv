@@ -1,0 +1,6 @@
+method_agreement	n_genes
+not_significant_in_both	14497
+both_upregulated	641
+limma_voom_only	178
+deseq2_only	115
+both_downregulated	79

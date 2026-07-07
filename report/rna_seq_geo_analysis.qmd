@@ -1,0 +1,405 @@
+---
+title: "Reproducible RNA-seq Differential Expression and Pathway Analysis of COVID-19-associated PBMC Transcriptomic Signatures"
+author: "Ryan Han"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    theme: cosmo
+    embed-resources: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(tidyverse)
+library(knitr)
+library(here)
+
+here::i_am("report/rna_seq_geo_analysis.qmd")
+
+read_table <- function(path) {
+  readr::read_tsv(here(path), show_col_types = FALSE)
+}
+
+include_figure <- function(path) {
+  knitr::include_graphics(here(path))
+}
+```
+
+# Summary
+
+This report presents a reproducible bulk RNA-seq analysis of public GEO dataset **GSE152418**, comparing COVID-19-related PBMC samples against healthy control PBMC samples.
+
+The analysis starts from a public gene-level count matrix and focuses on practical reproducible bioinformatics work: metadata curation, count-matrix alignment, quality control, DESeq2 differential expression analysis, gene annotation, pathway enrichment, biological interpretation and independent limma-voom sensitivity analysis.
+
+The main finding is that COVID-19-related PBMC samples show a robust disease-associated transcriptional signature dominated by humoral/B-cell immune response and cell-cycle/proliferation programmes, with selected antiviral marker genes such as `IFI27`.
+
+# Research question
+
+Which genes and biological pathways are transcriptionally altered between COVID-19-related PBMC samples and healthy control PBMC samples?
+
+# Dataset and analysis design
+
+```{r dataset-decision}
+dataset_decision <- read_table("metadata/dataset_decision.tsv")
+kable(dataset_decision, caption = "Dataset selection and analysis decision table")
+```
+
+```{r group-summary}
+group_summary <- read_table("results/tables/group_summary.tsv")
+kable(group_summary, caption = "Sample groups retained after metadata curation")
+```
+
+The cleaned analysis dataset retained 34 samples: 17 healthy controls and 17 COVID-19-related PBMC samples. The cleaned metadata were explicitly aligned to the count matrix so that the order of `metadata_clean$sample_id` matched the column order of the count matrix.
+
+This step was treated as a hard prerequisite for downstream analysis because sample-label mismatches are a major source of error in RNA-seq differential expression workflows.
+
+# Methods
+
+## Metadata curation
+
+GEO metadata were downloaded and manually curated into a clear two-group comparison:
+
+- `control`: healthy control PBMC samples
+- `disease`: COVID-19-related PBMC samples
+
+The project deliberately used a simple disease-control contrast because the short project scope prioritised a clean, reproducible and interpretable workflow rather than a complex multi-covariate design.
+
+## Count matrix filtering
+
+Low-expression genes were removed by retaining genes with counts greater than or equal to 10 in at least the size of the smallest analysis group. In this dataset, the smallest group size was 17 samples.
+
+```{r filtering-summary}
+filtering_summary <- read_table("results/tables/filtering_summary.tsv")
+kable(filtering_summary, caption = "Low-count filtering summary")
+```
+
+Filtering reduced the count matrix from 60,683 genes to 15,510 genes. This removed genes with insufficient expression evidence while preserving genes expressed in at least one biological group.
+
+## DESeq2 differential expression analysis
+
+Differential expression was modelled using DESeq2 with design:
+
+```{r deseq2-design, eval=FALSE}
+design = ~ group
+```
+
+The primary contrast was disease versus control. Log2 fold changes were shrunk using `apeglm` to improve effect-size stability for ranking and visualisation.
+
+```{r deseq2-summary}
+deseq2_summary <- read_table("results/tables/deseq2_result_summary.tsv")
+kable(deseq2_summary, caption = "DESeq2 differential expression summary")
+```
+
+## Gene annotation
+
+DESeq2 results were annotated by mapping Ensembl gene identifiers to gene symbols, Entrez IDs and gene names using human annotation resources.
+
+```{r annotation-summary}
+annotation_summary <- read_table("results/tables/gene_annotation_summary.tsv")
+kable(annotation_summary, caption = "Gene annotation summary")
+```
+
+Approximately 89.4% of tested genes were mapped to gene symbols and Entrez IDs, providing sufficient annotation coverage for gene-level interpretation and pathway analysis.
+
+## Pathway enrichment analysis
+
+Pathway analysis was performed using annotated Entrez IDs.
+
+The analysis included:
+
+- GO Biological Process over-representation analysis
+- Reactome pathway enrichment
+- KEGG pathway enrichment
+- Ranked-list GO Biological Process enrichment
+
+Upregulated and downregulated genes were analysed separately for over-representation analysis. The tested genes with Entrez IDs were used as the background universe.
+
+```{r enrichment-input}
+enrichment_input <- read_table("results/tables/enrichment_input_summary.tsv")
+kable(enrichment_input, caption = "Gene sets used for pathway enrichment")
+```
+
+## Sensitivity analysis
+
+An independent edgeR + limma-voom sensitivity analysis was performed using the same filtered count matrix and metadata. edgeR was used to create the DGEList object and calculate TMM normalisation factors, followed by voom transformation, linear modelling and empirical Bayes moderation.
+
+The purpose of this analysis was not to replace DESeq2, but to test whether the main disease-control signal was robust to an alternative differential expression framework.
+
+```{r sensitivity-summary}
+sensitivity_summary <- read_table("results/tables/sensitivity_overlap_summary.tsv")
+kable(sensitivity_summary, caption = "DESeq2 versus limma-voom sensitivity summary")
+```
+
+# Results
+
+## Sample-level quality control
+
+```{r pca-figure, fig.cap="PCA of variance-stabilised expression profiles. PC1 explained 49.6% of the total variance and separated most disease samples from healthy controls."}
+include_figure("results/figures/pca_vst_group.png")
+```
+
+PCA of variance-stabilised expression values showed clear separation between COVID-19-related PBMC samples and healthy controls along PC1. PC1 explained 49.6% of the total variance, indicating that disease status was a major source of transcriptomic variation in the dataset.
+
+One disease sample clustered closer to the control group, and one disease sample showed stronger separation along PC2. These samples were retained because there was no metadata-based justification for exclusion. Their presence is treated as sample-level heterogeneity rather than technical failure.
+
+```{r sample-distance-figure, fig.cap="Sample-to-sample distance heatmap based on variance-stabilised expression values."}
+include_figure("results/figures/sample_distance_heatmap.png")
+```
+
+The sample distance heatmap broadly supported group-level separation while also revealing within-group heterogeneity. This is expected in bulk PBMC RNA-seq, where expression differences can reflect both transcriptional regulation and differences in immune-cell composition.
+
+## Differential expression results
+
+DESeq2 identified 835 significant genes using adjusted p-value < 0.05 and absolute shrunken log2 fold-change >= 1. Of these, 736 were upregulated and 99 were downregulated in disease relative to control.
+
+```{r volcano-figure, fig.cap="DESeq2 volcano plot with gene-symbol labels. The disease-control contrast showed a strong bias toward upregulated genes in disease samples."}
+include_figure("results/figures/volcano_plot_deseq2_gene_symbols.png")
+```
+
+The volcano plot showed a strong disease-associated transcriptional signal, with many significant genes shifted toward positive log2 fold changes. `IFI27` was one of the strongest upregulated individual genes, supporting the presence of an interferon-associated antiviral component.
+
+```{r top-gene-table}
+top_genes <- read_table("results/tables/top50_annotated_genes.tsv") %>%
+  select(gene_symbol, gene_name, log2FoldChange, padj, significant) %>%
+  slice_head(n = 20)
+
+kable(top_genes, digits = 4, caption = "Top annotated DESeq2 genes ranked by adjusted p-value")
+```
+
+The top-ranked genes were dominated by cell-cycle and proliferation-related genes, including `TK1`, `RRM2`, `PLK1`, `UBE2C`, `CCNA2`, `FOXM1`, `TPX2`, `AURKB`, `CDC20`, `MKI67` and `BIRC5`. Immune-associated genes including `IFI27`, `IGHV1-24` and `MZB1` were also among the strongest signals.
+
+```{r top50-heatmap, fig.cap="Top 50 differentially expressed genes using gene-symbol labels. Most top-ranked genes were upregulated in disease samples relative to healthy controls."}
+include_figure("results/figures/top50_gene_heatmap_gene_symbols.png")
+```
+
+The top 50 differentially expressed genes showed a strong group-associated expression pattern. Most top-ranked genes were expressed at higher levels in COVID-19-related PBMC samples than in healthy controls.
+
+## Pathway enrichment results
+
+```{r pathway-summary}
+pathway_summary <- read_table("results/tables/pathway_enrichment_summary.tsv") %>%
+  select(source, direction, pathway, adjusted_pvalue, gene_ratio, gene_count) %>%
+  slice_head(n = 25)
+
+kable(pathway_summary, digits = 4, caption = "Top pathway enrichment results")
+```
+
+Pathway enrichment showed two dominant upregulated programmes:
+
+1. Humoral/B-cell immune response
+2. Cell-cycle and proliferation
+
+The strongest GO Biological Process terms among upregulated genes were immunoglobulin-mediated immune response, B-cell-mediated immunity and immunoglobulin production.
+
+```{r go-barplot, fig.cap="Top GO Biological Process terms among upregulated genes. Humoral/B-cell immune processes and nuclear division-related terms dominated the enrichment results."}
+include_figure("results/figures/go_bp_top_terms_upregulated_barplot.png")
+```
+
+The leading GO Biological Process terms were:
+
+- Immunoglobulin mediated immune response: adjusted p-value = 3.79e-31, 59 genes
+- B cell mediated immunity: adjusted p-value = 6.50e-31, 59 genes
+- Immunoglobulin production: adjusted p-value = 3.01e-26, 52 genes
+- Production of molecular mediator of immune response: adjusted p-value = 4.43e-20, 58 genes
+- Lymphocyte mediated immunity: adjusted p-value = 6.67e-19, 63 genes
+- Nuclear division: adjusted p-value = 1.01e-14, 61 genes
+
+Together, these results indicate that the upregulated disease signature was not limited to individual marker genes, but represented coordinated pathway-level changes.
+
+## Reactome and KEGG results
+
+```{r reactome-figure, fig.cap="Reactome pathway enrichment among upregulated genes."}
+include_figure("results/figures/reactome_dotplot_upregulated.png")
+```
+
+Reactome enrichment independently supported a cell-cycle and proliferation signal. The top Reactome pathway was Cell Cycle Checkpoints, with adjusted p-value = 5.88e-17 and 56 genes. Other enriched Reactome terms included DNA Replication, M Phase, nucleosome assembly and sister chromatid cohesion.
+
+KEGG enrichment also identified Cell cycle as the top upregulated pathway, with adjusted p-value = 1.26e-13 and 38 genes.
+
+These Reactome and KEGG results agree with the top DE genes, including `PLK1`, `RRM2`, `UBE2C`, `CCNA2`, `AURKB`, `CDC20`, `MKI67` and `BIRC5`.
+
+## Downregulated pathway results
+
+```{r downregulated-go}
+go_down <- read_table("results/tables/go_bp_enrichment_downregulated.tsv") %>%
+  select(ID, Description, p.adjust, GeneRatio, Count) %>%
+  slice_head(n = 15)
+
+kable(go_down, digits = 4, caption = "Top GO Biological Process terms among downregulated genes")
+```
+
+Downregulated genes were fewer than upregulated genes, but their pathway enrichment suggested altered immune-cell trafficking and signalling programmes. The leading downregulated GO terms included:
+
+- G protein-coupled receptor signalling pathway
+- Cell chemotaxis
+- Leukocyte chemotaxis
+- Chemotaxis
+- Regulation of leukocyte migration
+- Neutrophil chemotaxis
+
+These results should be interpreted more cautiously than the upregulated enrichment results because the downregulated gene set was smaller.
+
+## Biological interpretation
+
+```{r biological-interpretation}
+bio_interpretation <- read_table("results/tables/biological_interpretation_table.tsv") %>%
+  slice_head(n = 25)
+
+kable(bio_interpretation, caption = "Biological interpretation table")
+```
+
+The disease-associated PBMC transcriptomic signature can be summarised as three major components.
+
+First, the strongest pathway-level signal was humoral/B-cell immune response. GO enrichment was dominated by immunoglobulin-mediated immune response, B-cell-mediated immunity and immunoglobulin production. This suggests antibody-producing or plasmablast-associated immune activity in disease PBMC samples.
+
+Second, a strong cell-cycle and proliferation programme was observed. Top upregulated genes included `TK1`, `RRM2`, `PLK1`, `UBE2C`, `CCNA2`, `FOXM1`, `AURKB`, `CDC20`, `MKI67` and `BIRC5`. Reactome and KEGG independently supported this interpretation through enrichment of Cell Cycle Checkpoints and Cell cycle pathways.
+
+Third, `IFI27` was strongly upregulated, supporting an interferon-associated antiviral marker signal. However, the pathway-level results were dominated more strongly by humoral immunity and cell-cycle activation than by interferon response alone.
+
+## Sensitivity analysis
+
+```{r logfc-comparison, fig.cap="DESeq2 versus limma-voom log fold-change comparison. Log fold-change estimates were highly concordant across 15,510 tested genes."}
+include_figure("results/figures/deseq2_limma_voom_logfc_comparison.png")
+```
+
+DESeq2 and limma-voom showed highly concordant log fold-change estimates across all 15,510 tested genes. The Pearson correlation was 0.966 and the Spearman correlation was 0.976.
+
+The strongest shared upregulated genes included `IFI27`, `IGHV1-24`, `RRM2`, `PLK1`, `CDC20`, `BIRC5`, `CCNA2`, `UBE2C`, `MKI67`, `FOXM1`, `TPX2` and `AURKB`.
+
+```{r significant-overlap, fig.cap="Significant-gene overlap between DESeq2 and limma-voom."}
+include_figure("results/figures/significant_gene_overlap_deseq2_limma_voom.png")
+```
+
+The two differential expression frameworks showed strong agreement:
+
+- DESeq2 identified 835 significant genes.
+- limma-voom identified 898 significant genes.
+- 720 significant genes were shared between methods.
+- The significant-gene Jaccard index was 0.711.
+- 95.9% of all tested genes showed the same log fold-change direction between methods.
+- 100% of shared significant genes showed the same log fold-change direction.
+
+These results support the robustness of the main disease-control transcriptional signature.
+
+# Discussion
+
+This analysis identified a robust COVID-19-associated PBMC transcriptional signature in public bulk RNA-seq data.
+
+The gene-level results showed strong upregulation of cell-cycle and proliferative markers, including `TK1`, `RRM2`, `PLK1`, `UBE2C`, `CCNA2`, `FOXM1`, `AURKB`, `CDC20`, `MKI67` and `BIRC5`. These genes were supported by Reactome and KEGG pathway enrichment for Cell Cycle Checkpoints, Cell cycle, DNA Replication and M Phase.
+
+The pathway-level results were also strongly enriched for humoral and B-cell-associated immune processes. The top GO Biological Process terms were immunoglobulin-mediated immune response, B-cell-mediated immunity and immunoglobulin production. This suggests that disease PBMC samples may contain a strong antibody-producing or plasmablast-associated transcriptional component.
+
+`IFI27` was one of the most strongly upregulated genes, suggesting an interferon-associated antiviral marker signal. However, the overall pathway-level story was not simply an interferon response. Instead, the dominant signal combined humoral/B-cell immunity, cell-cycle/proliferation and selected antiviral markers.
+
+The independent limma-voom sensitivity analysis substantially strengthened the result. DESeq2 and limma-voom produced highly correlated log fold-change estimates and identified 720 shared significant genes, all with the same log fold-change direction. This indicates that the main biological conclusions are not dependent on a single differential expression method.
+
+# Limitations
+
+This analysis has several important limitations.
+
+First, the dataset is bulk PBMC RNA-seq. Therefore, observed expression differences may reflect both transcriptional regulation within cells and differences in immune-cell composition. For example, B-cell and cell-cycle signals may reflect increased abundance of specific immune-cell populations, altered activation states, or both.
+
+Second, the model used a simple disease-control contrast. More complex clinical or technical covariates such as age, sex, disease severity or batch were not included in the primary design. This was a deliberate choice to maintain a clean and reproducible short-project workflow, but it limits causal and clinical interpretation.
+
+Third, pathway enrichment analysis is hypothesis-generating. It summarises coordinated gene-level patterns but does not prove mechanism.
+
+Fourth, downregulated genes were fewer than upregulated genes, so downregulated pathway results should be interpreted more cautiously.
+
+Finally, public GEO metadata can be incomplete or inconsistently annotated. Metadata curation decisions were therefore recorded explicitly to make the analysis transparent.
+
+# Conclusion
+
+COVID-19-related PBMC samples showed a robust disease-associated transcriptional signature compared with healthy controls. The primary DESeq2 analysis identified 835 significant genes, with a strong bias toward upregulation in disease samples. Pathway enrichment indicated two dominant upregulated programmes: humoral/B-cell immune response and cell-cycle/proliferation. Selected antiviral marker genes, especially `IFI27`, were also strongly upregulated.
+
+An independent limma-voom sensitivity analysis supported the robustness of the findings, with Pearson logFC correlation = 0.966, Spearman logFC correlation = 0.976 and 720 shared significant genes between methods.
+
+Overall, this project demonstrates a reproducible RNA-seq workflow from public GEO count data to statistically supported and biologically interpretable disease-associated gene and pathway signatures.
+
+# Reproducibility
+
+The analysis was performed using scripted R workflows and an `renv.lock` file to record package versions.
+
+To reproduce the analysis from the project root:
+
+```{r reproduce-code, eval=FALSE}
+renv::restore()
+
+source("scripts/00_setup.R")
+source("scripts/01_download_data.R")
+source("scripts/02_metadata_cleaning.R")
+source("scripts/03_qc_deseq2_analysis.R")
+source("scripts/04_gene_annotation_pathway_analysis.R")
+source("scripts/05_sensitivity_limma_voom_analysis.R")
+source("scripts/06_render_report.R")
+```
+
+# Main output files
+
+## Tables
+
+```{r main-tables}
+main_tables <- tibble(
+  file = c(
+    "results/tables/deseq2_all_genes_annotated.tsv",
+    "results/tables/deseq2_significant_genes_annotated.tsv",
+    "results/tables/top50_annotated_genes.tsv",
+    "results/tables/pathway_enrichment_summary.tsv",
+    "results/tables/biological_interpretation_table.tsv",
+    "results/tables/limma_voom_all_genes.tsv",
+    "results/tables/sensitivity_overlap_summary.tsv",
+    "results/tables/shared_significant_genes_deseq2_limma_voom.tsv"
+  ),
+  description = c(
+    "Full annotated DESeq2 result table",
+    "Significant annotated DESeq2 genes",
+    "Top 50 annotated genes ranked by adjusted p-value",
+    "Combined GO, Reactome and KEGG pathway enrichment summary",
+    "Gene/pathway biological interpretation table",
+    "Full limma-voom result table",
+    "DESeq2 versus limma-voom robustness summary",
+    "Shared significant genes between DESeq2 and limma-voom"
+  )
+)
+
+kable(main_tables, caption = "Main result tables")
+```
+
+## Figures
+
+```{r main-figures}
+main_figures <- tibble(
+  file = c(
+    "results/figures/pca_vst_group.png",
+    "results/figures/sample_distance_heatmap.png",
+    "results/figures/volcano_plot_deseq2_gene_symbols.png",
+    "results/figures/top50_gene_heatmap_gene_symbols.png",
+    "results/figures/go_bp_top_terms_upregulated_barplot.png",
+    "results/figures/reactome_dotplot_upregulated.png",
+    "results/figures/deseq2_limma_voom_logfc_comparison.png",
+    "results/figures/significant_gene_overlap_deseq2_limma_voom.png"
+  ),
+  description = c(
+    "PCA of variance-stabilised expression profiles",
+    "Sample-to-sample distance heatmap",
+    "DESeq2 volcano plot with gene symbols",
+    "Top 50 differentially expressed genes",
+    "Top GO Biological Process terms among upregulated genes",
+    "Reactome enrichment among upregulated genes",
+    "DESeq2 versus limma-voom logFC comparison",
+    "Significant-gene overlap between DESeq2 and limma-voom"
+  )
+)
+
+kable(main_figures, caption = "Main result figures")
+```
+
+# Session information
+
+```{r session-info}
+sessionInfo()
+```
